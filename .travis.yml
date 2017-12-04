@@ -1,0 +1,29 @@
+env:
+  global:
+    - HOMEBREW_NO_AUTO_UPDATE=1
+    - SDKS_DIR=$HOME/sdks
+
+#cache:
+#  directories:
+#    - $SDKS_DIR
+
+os: osx
+compiler: clang
+osx_image: xcode6.4
+
+script:
+  - if [ -z "$(ls -A $SDKS_DIR)" ]; then
+      mkdir -p $SDKS_DIR;
+      cd $SDKS_DIR;
+      $TRAVIS_BUILD_DIR/gen_macos_sdk_packages.sh;
+      $TRAVIS_BUILD_DIR/gen_ios_sdk_packages.sh;
+    fi
+
+deploy:
+  provider: releases
+  api_key:
+    secure: OjDAk06wPyyzE+d4GVNnPvpfn/9rq789JA9XWyVkHE9RnYGFOMFx6dQDnOUl2lPK0X93KIHIWzIyntKIcnnXnp59FifshnEn3oERrygiaHIVJrAvKv0iAGxeaKRf6p40knMDeLrcYnd6C3xlOYuSmmtgTkLyUveX5zOem5XLROKzkGWRoQCAL6udOH1lODZK+YBBRLhTEeNegFH1mkvCjaMkAoJblruZ/ICmnc5F+hNQgUMPKuq39oRyxHOnvVpR7W+5x/e4IPPwaY7dJBKXeyhuMcLyHISEan9cKfy+NitUgIaNLYp/kbdkA/cwqKt9F/0nAhKx+Om+Bk2VlnL2Q8MTPi1xae4HTShQ9G6mqOZV8gN3rJphxpj5PwBH3VU7dqxNgtqg/9vXjk1LMaCRKnx5fGmbgFz75eu9FIi92QsazGCcQh05WmGELasnlxc57QihkIr0XoefwTDUGbJdmg2ujHrjgj/Ry8qXstpdjve1EqHfqaWBaOwMnYYFRHpuoUKgxfcztvf29bM0W7VvVzasRc+Yc1A6emlqrITcnAldCPiKX2KYcwrNXZp1QHq2qVi41HcBbzAWJzT5YxGG1erkVZYKMGq+qqeQAUfW3mSAgbvTYbBY2uDVvbQkX4074sLDwRzM95jSq1Z14bYWdyCvD6WdrytqsGA4Xrh4460=
+  file_glob: true
+  file: ${SDKS_DIR}/*.tar.*
+  on:
+    repo: rraallvv/AppleSDKPacker
