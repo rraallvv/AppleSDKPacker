@@ -18,6 +18,56 @@ function set_xcode_dir()
   fi
 }
 
+function cp_p() {
+  local files=0
+  while IFS= read -r -d '' file; do ((files++)); done < <(find -L $1 -mindepth 1 -name '*.*' -print0)
+  local duration=$(tput cols)
+  duration=$(($duration<80?$duration:80-8))
+  local count=1
+  local elapsed=1
+  local bar=""
+
+  already_done() {
+    bar="\r|"
+    for ((done=0; done<$(( ($elapsed)*($duration)/100 )); done++)); do
+      printf -v bar "$bar▇"
+    done
+  }
+  remaining() {
+    for ((remain=$(( ($elapsed)*($duration)/100 )); remain<$duration; remain++)); do
+      printf -v bar "$bar "
+    done
+    printf -v bar "$bar|"
+  }
+  percentage() {
+    printf -v bar "$bar%3d%s" $elapsed '%%'
+  }
+
+  mkdir -p "$2/$1"
+  chmod `stat -f %A "$1"` "$2/$1"
+
+  while IFS= read -r -d '' file; do
+    file=$(echo $file | sed 's|^\./\(.*\)|"\1"|')
+    elapsed=$(( (($count)*100)/($files) ))
+    already_done
+    remaining
+    percentage
+    printf "$bar"
+    if [[ -d "$file" ]]; then
+      dst=$2/$file
+      test -d "$dst" || (mkdir -p "$dst" && chmod `stat -f %A "$file"` "$dst")
+    else
+      src=${file%/*}
+      dst=$2/$src
+      test -d "$dst" || (mkdir -p "$dst" && chmod `stat -f %A "$src"` "$dst")
+      cp -pf "$file" "$2/$file"
+    fi
+    ((count++))
+  done < <(find -L $1 -mindepth 1 -name '*.*' -print0)
+
+  printf "\r"
+}
+
 if [ $(uname -s) != "Darwin" ]; then
   if [ -z "$XCODEDIR" ]; then
     echo "This script must be run on OS X" 1>&2
@@ -128,20 +178,20 @@ for SDK in $SDKS; do
   fi
 
   TMP=$(mktemp -d /tmp/XXXXXXXXXXX)
-  cp -r $SDK $TMP &>/dev/null || true
+  cp_p $SDK $TMP || true
 
   pushd $XCODEDIR &>/dev/null
 
   # libc++ headers for C++11/C++14
   if [ -d $LIBCXXDIR1 ]; then
-    cp -rf $LIBCXXDIR1 "$TMP/$SDK/usr/include/c++"
+    cp_p $LIBCXXDIR1 "$TMP/$SDK/usr/include/c++"
   elif [ -d $LIBCXXDIR2 ]; then
-    cp -rf $LIBCXXDIR2 "$TMP/$SDK/usr/include/c++"
+    cp_p $LIBCXXDIR2 "$TMP/$SDK/usr/include/c++"
   fi
 
   if [ -d $MANDIR ]; then
     mkdir -p $TMP/$SDK/usr/share/man
-    cp -rf $MANDIR/* $TMP/$SDK/usr/share/man
+    cp_p $MANDIR/* $TMP/$SDK/usr/share/man
   fi
 
   popd &>/dev/null
